@@ -230,25 +230,15 @@ async def async_setup_entry(
                 "Unknown or unsupported zone type skipped: %s, tado line: %s",
                 zone_type,
                 tado_line,
-            )            
+            )
             continue
 
-        if tado.is_x:
-            entities.extend(
-                [
-                    TadoZoneSensor(tado, zone["name"], zone["id"], entity_description)
-                    for entity_description in ZONE_SENSORS[zone_type]
-                    if entity_description.key
-                    != "tado mode"  # tado mode is not available for TadoX
-                ]
-            )
-        else:
-            entities.extend(
-                [
-                    TadoZoneSensor(tado, zone["name"], zone["id"], entity_description)
-                    for entity_description in ZONE_SENSORS[zone_type]
-                ]
-            )
+        entities.extend(
+            [
+                TadoZoneSensor(tado, zone["name"], zone["id"], entity_description)
+                for entity_description in ZONE_SENSORS[tado_line][zone_type]
+            ]
+        )
 
     async_add_entities(entities, True)
 

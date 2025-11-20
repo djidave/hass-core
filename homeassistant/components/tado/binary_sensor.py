@@ -49,9 +49,8 @@ BATTERY_STATE_ENTITY_DESCRIPTION = TadoBinarySensorEntityDescription(
 CONNECTION_STATE_ENTITY_DESCRIPTION = TadoBinarySensorEntityDescription(
     key="connection state",
     translation_key="connection_state",
-    state_fn=lambda data: data.get("connectionState", {}).get(
-        "value", data.get("connection", {}).get("state", False)
-    ),device_class=BinarySensorDeviceClass.CONNECTIVITY,
+    state_fn=lambda data: data.get("connectionState", {}).get("value", False),
+    device_class=BinarySensorDeviceClass.CONNECTIVITY,
 )
 TADO_X_CONNECTION_STATE_ENTITY_DESCRIPTION = TadoBinarySensorEntityDescription(
     key="connection state",
@@ -181,30 +180,20 @@ async def async_setup_entry(
     # Create zone sensors
     for zone in zones:
         zone_type = zone["type"]
-        if zone_type not in ZONE_SENSORS:
-            _LOGGER.warning("Unknown zone type skipped: %s", zone_type)
+        if zone_type not in ZONE_SENSORS[tado_line]:
+            _LOGGER.warning(
+                "Unknown or unsupported zone type skipped: %s, tado line: %s",
+                zone_type,
+                tado_line,
+            )
             continue
 
-        if tado.is_x:
-            entities.extend(
-                [
-                    TadoZoneBinarySensor(
-                        tado, zone["name"], zone["id"], entity_description
-                    )
-                    for entity_description in ZONE_SENSORS[zone_type]
-                    if entity_description.key
-                    != "early start"  # early start is not available for TadoX
-                ]
-            )
-        else:
-            entities.extend(
-                [
-                    TadoZoneBinarySensor(
-                        tado, zone["name"], zone["id"], entity_description
-                    )
-                    for entity_description in ZONE_SENSORS[zone_type]
-                ]
-            )
+        entities.extend(
+            [
+                TadoZoneBinarySensor(tado, zone["name"], zone["id"], entity_description)
+                for entity_description in ZONE_SENSORS[tado_line][zone_type]
+            ]
+        )
 
     async_add_entities(entities, True)
 

@@ -150,10 +150,7 @@ async def create_climate_entity(
     tado: TadoDataUpdateCoordinator, name: str, zone_id: int, device_info: dict
 ) -> TadoClimate | None:
     """Create a Tado climate entity."""
-    if tado.is_x:
-        capabilities = {"type": TYPE_HEATING}
-    else:
-        capabilities = tado.get_capabilities(zone_id)
+    capabilities = await tado.get_capabilities(zone_id)
     _LOGGER.debug("Capabilities for zone %s: %s", zone_id, capabilities)
 
     zone_type = capabilities["type"]
@@ -325,7 +322,6 @@ class TadoClimate(TadoZoneEntity, ClimateEntity):
             if self._tado.is_x
             else self._device_info["shortSerialNo"]
         )
-
         self._ac_device = zone_type == TYPE_AIR_CONDITIONING
         self._attr_hvac_modes = supported_hvac_modes
         self._attr_fan_modes = supported_fan_modes
@@ -375,7 +371,6 @@ class TadoClimate(TadoZoneEntity, ClimateEntity):
         self._tado_geofence_data = self._tado.data["geofence"]
         self._tado_zone_data = self._tado.data["zone"][self.zone_id]
 
-        # Assign offset values to mapped attributes
         if self._tado.is_x:
             self._tado_zone_temp_offset["offset_celsius"] = self._tado.data["device"][
                 self._device_id
@@ -479,7 +474,7 @@ class TadoClimate(TadoZoneEntity, ClimateEntity):
             if self._tado.is_x and self._tado_geofence_data["presence"] == "HOME":
                 return PRESET_HOME
             if self._tado.is_x and self._tado_geofence_data["presence"] == "AWAY":
-                return PRESET_AWAY        
+                return PRESET_AWAY
         if self._tado_zone_data.is_away:
             return PRESET_AWAY
         return PRESET_HOME
@@ -506,9 +501,11 @@ class TadoClimate(TadoZoneEntity, ClimateEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
-        if self._current_tado_hvac_mode == CONST_MODE_OFF:
-            return TADO_DEFAULT_MIN_TEMP
-        return self._tado_zone_data.target_temp
+        # If the target temperature will be None
+        # if the device is performing an action
+        # that does not affect the temperature or
+        # the device is switching states
+        return self._tado_zone_data.target_temp or self._tado_zone_data.current_temp
 
     async def set_timer(
         self,
